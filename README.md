@@ -1,6 +1,6 @@
 # CeiboMed Skills
 
-Tres skills de [Claude Code](https://claude.com/claude-code) para el desarrollo seguro y ordenado de la suite clínica **CeiboMed** — un conjunto de herramientas de apoyo a la decisión médica construidas como aplicaciones HTML de un solo archivo.
+Siete skills de [Claude Code](https://claude.com/claude-code) para el desarrollo seguro y ordenado de la suite clínica **CeiboMed** — un conjunto de herramientas de apoyo a la decisión médica construidas como aplicaciones HTML de un solo archivo.
 
 Cada skill automatiza un control que, hecho a mano, es fácil de olvidar en cada release: verificar los avisos médico-legales, cazar credenciales expuestas antes de publicar, y dejar registrado qué cambió en la jornada.
 
@@ -20,6 +20,26 @@ Detecta **API keys, contraseñas y credenciales expuestas** en el código fuente
 Genera un **CHANGELOG.md acumulativo** al cierre de sesión, leyendo los commits git del día de todos los repos de la suite y organizándolos por app y por tipo (Seguridad, Clínico, UX/A11y, Config/Feature, Fix). No destructivo e idempotente.
 
 **Cuándo:** al final de cada sesión de trabajo.
+
+### 🩻 `pdf-quality-guard`
+Verifica que el **PDF que genera una app salga completo** antes de entregárselo al paciente: campos obligatorios (nombre, fecha, médico), firma, disclaimer médico-legal en el pie y QR si está activado. Reporta qué falta, con qué severidad y cómo remediarlo.
+
+**Cuándo:** antes de generar, exportar o imprimir un informe.
+
+### 📱 `mobile-first-checker`
+Detecta elementos que **se rompen en celular o tablet**: touch targets menores a 44px, anchos fijos que no se adaptan, texto demasiado chico y falta de breakpoints responsive. Reporta elemento, línea, severidad y fix sugerido.
+
+**Cuándo:** antes de compartir o publicar una app.
+
+### 🧭 `skill-discovery`
+Encuentra **skills nuevas relevantes** para CeiboMed (seguridad, PDF, accesibilidad, testing) que todavía no estén instaladas, comparando contra un catálogo curado. No sugiere lo ya instalado.
+
+**Cuándo:** periódicamente, para ampliar el toolkit.
+
+### 🎛️ `skill-cooperator`
+**Orquesta** las skills correctas según el tipo de tarea de la sesión (seguridad, UX, clínico, deploy, pre-lanzamiento) y sugiere el orden óptimo de ejecución, usando sólo las instaladas.
+
+**Cuándo:** al inicio de sesión o antes de una etapa (pre-lanzamiento, deploy).
 
 ## Instalación
 
