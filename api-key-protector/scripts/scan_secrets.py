@@ -125,41 +125,70 @@ def resolve_targets(args):
             print(f"⚠️  No existe: {a}")
     return targets
 
+# Hallazgos que en modo --gate DEBEN frenar un push (fugas graves que nunca deben
+# subirse). La contraseña cliente-side conocida y los secretos en localStorage se
+# reportan pero NO frenan el push en modo gate (patrón conocido/aceptado de la suite),
+# para no bloquear todos los push. En modo normal (sin --gate) sí cuentan.
+GATE_BLOCK = {
+    "Clave secreta tipo OpenAI/Anthropic (sk-…)",
+    "Token de GitHub (ghp_/gho_/ghs_…)",
+    "AWS Access Key ID (AKIA…)",
+    "Google API Key (AIza…)",
+    "Token de Slack (xox…)",
+    "Clave privada PEM/RSA en el código",
+    "URL con credenciales embebidas (user:pass@host)",
+}
+
 def main():
-    if len(sys.argv) < 2:
+    argv = [a for a in sys.argv[1:] if a != "--gate"]
+    gate = "--gate" in sys.argv
+    if not argv:
         print(__doc__); sys.exit(2)
-    targets = resolve_targets(sys.argv[1:])
+    targets = resolve_targets(argv)
     if not targets:
         print("No se encontraron archivos para escanear."); sys.exit(2)
 
     print("═" * 70)
-    print("  api-key-protector — CeiboMed  ·  escaneo de credenciales expuestas")
+    mode = "  (modo gate: frena solo ante fugas graves)" if gate else ""
+    print("  api-key-protector — CeiboMed  ·  escaneo de credenciales expuestas" + mode)
     print("═" * 70)
 
-    grand_crit = grand_high = 0
+    grand_crit = grand_high = grand_gate = 0
     for path in targets:
         app = os.path.basename(os.path.dirname(path)) or os.path.basename(path)
         findings = scan_file(path)
         n_crit = sum(1 for f in findings if f["sev"] == "CRITICO")
         n_high = sum(1 for f in findings if f["sev"] == "ALTO")
-        grand_crit += n_crit; grand_high += n_high
+        n_gate = sum(1 for f in findings if f["name"] in GATE_BLOCK)
+        grand_crit += n_crit; grand_high += n_high; grand_gate += n_gate
         if not findings:
             print(f"\n▶ {app}  —  ✅ Sin credenciales expuestas detectadas")
             continue
         print(f"\n▶ {app}  —  🔴 {n_crit} crítico(s) · 🟠 {n_high} alto(s)")
         print(f"  {path}")
         for f in findings:
-            print(f"   {SEV_ICON[f['sev']]} [{f['sev']}] {f['name']}  (línea {f['line']})")
+            flag = "  ⛔BLOQUEA" if (gate and f["name"] in GATE_BLOCK) else ""
+            print(f"   {SEV_ICON[f['sev']]} [{f['sev']}] {f['name']}  (línea {f['line']}){flag}")
             print(f"      {f['frag']}")
             print(f"      → {f['fix']}")
 
     print("\n" + "═" * 70)
-    if grand_crit == 0 and grand_high == 0:
-        print("  RESULTADO: ✅ Sin credenciales críticas/altas. Seguro para push.")
+    if gate:
+        if grand_gate == 0:
+            print("  RESULTADO (gate): ✅ Sin fugas graves. Push permitido.")
+            if grand_crit or grand_high:
+                print(f"  (aviso: {grand_crit} crítico(s) y {grand_high} alto(s) conocidos — revisar aparte, no frenan el push)")
+        else:
+            print(f"  RESULTADO (gate): ⛔ {grand_gate} fuga(s) grave(s) — PUSH BLOQUEADO. Quitar del código antes de subir.")
+        print("═" * 70)
+        sys.exit(1 if grand_gate else 0)
     else:
-        print(f"  RESULTADO: ❌ {grand_crit} crítico(s) y {grand_high} alto(s) — RESOLVER antes de git push / publicar.")
-    print("═" * 70)
-    sys.exit(1 if (grand_crit or grand_high) else 0)
+        if grand_crit == 0 and grand_high == 0:
+            print("  RESULTADO: ✅ Sin credenciales críticas/altas. Seguro para push.")
+        else:
+            print(f"  RESULTADO: ❌ {grand_crit} crítico(s) y {grand_high} alto(s) — RESOLVER antes de git push / publicar.")
+        print("═" * 70)
+        sys.exit(1 if (grand_crit or grand_high) else 0)
 
 if __name__ == "__main__":
     main()
